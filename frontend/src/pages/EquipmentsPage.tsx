@@ -31,6 +31,8 @@ interface Equipment {
   photoUrl: string | null;
   status: string;
   notes: string | null;
+
+  isPublished: boolean;
 }
 
 export default function EquipmentsPage() {
