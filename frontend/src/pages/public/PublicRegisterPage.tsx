@@ -149,7 +149,6 @@ export default function PublicRegisterPage() {
 
     try {
       setLoading(true);
-
       await api.post('/auth/register', {
         fullName,
         email,
