@@ -523,6 +523,12 @@ export default function PublicDashboardPage() {
   function changeTab(tab: ActiveTab) {
     setActiveTab(tab);
     setMobileMenuOpen(false);
+
+    window.history.pushState(
+      { activeTab: tab },
+      '',
+      `/public/dashboard?tab=${tab}`,
+    );
   }
 
   async function handleAcceptServiceTerms() {
@@ -628,7 +634,32 @@ export default function PublicDashboardPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab') as ActiveTab | null;
+
+    if (tab) {
+      setActiveTab(tab);
+    }
+
     loadData();
+
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+
+      const currentTab = params.get('tab') as ActiveTab | null;
+
+      if (currentTab) {
+        setActiveTab(currentTab);
+      } else {
+        setActiveTab('dashboard');
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   return (
