@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useNavigate,
   useSearchParams,
@@ -20,13 +20,24 @@ export default function PublicLoginPage() {
   const [searchParams] = useSearchParams();
 
   const redirectTo =
-    searchParams.get('redirect') || '/public/dashboard';
+    searchParams.get('redirect') || '/public/dashboard?tab=dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const publicToken = localStorage.getItem('public_access_token');
+    const publicUser = localStorage.getItem('public_user');
+
+    if (publicToken && publicUser) {
+      navigate('/public/dashboard?tab=dashboard', {
+        replace: true,
+      });
+    }
+  }, [navigate]);
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
@@ -56,7 +67,7 @@ export default function PublicLoginPage() {
         return;
       }
 
-      navigate('/public/dashboard');
+      navigate('/public/dashboard?tab=dashboard');
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
@@ -138,11 +149,11 @@ export default function PublicLoginPage() {
 
           <p className="mt-5 text-center text-sm text-slate-500">
             Ainda não tem cadastro?{' '}
-            
+
             <a
               href={`/public/register?redirect=${encodeURIComponent(redirectTo)}`}
               className="font-bold text-blue-600 hover:text-blue-700"
-            > 
+            >
               Criar conta
             </a>
           </p>
