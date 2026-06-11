@@ -78,6 +78,10 @@ export class EquipmentsController {
     UserType.ADMIN,
     UserType.OPERATOR,
     UserType.MECHANIC,
+    UserType.STUDENT,
+    UserType.TEACHER,
+    UserType.STAFF,
+    UserType.OUTSOURCED_WORKER,
   )
   @Get()
   findAll() {

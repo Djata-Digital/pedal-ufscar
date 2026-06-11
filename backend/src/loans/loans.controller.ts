@@ -52,7 +52,14 @@ export class LoansController {
     return this.loansService.signTerm(id, dto);
   }
 
-  @Roles(UserType.ADMIN, UserType.OPERATOR)
+  @Roles(
+    UserType.ADMIN,
+    UserType.OPERATOR,
+    UserType.STUDENT,
+    UserType.TEACHER,
+    UserType.STAFF,
+    UserType.OUTSOURCED_WORKER,
+  )
   @Get()
   findAll() {
     return this.loansService.findAll();

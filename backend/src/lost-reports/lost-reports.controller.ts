@@ -74,7 +74,14 @@ export class LostReportsController {
     return this.lostReportsService.create(dto);
   }
 
-  @Roles(UserType.ADMIN, UserType.OPERATOR)
+  @Roles(
+    UserType.STUDENT,
+    UserType.TEACHER,
+    UserType.STAFF,
+    UserType.OUTSOURCED_WORKER,
+    UserType.ADMIN,
+    UserType.OPERATOR,
+  )
   @Get()
   findAll() {
     return this.lostReportsService.findAll();
