@@ -5,9 +5,10 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token =
-    localStorage.getItem('@pedal_token') ||
-    localStorage.getItem('public_access_token');
+  const adminToken = localStorage.getItem('@pedal_token');
+  const publicToken = localStorage.getItem('public_access_token');
+
+  const token = adminToken || publicToken;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
