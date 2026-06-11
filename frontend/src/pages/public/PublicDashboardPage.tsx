@@ -525,11 +525,9 @@ export default function PublicDashboardPage() {
     setActiveTab(tab);
     setMobileMenuOpen(false);
 
-    window.history.pushState(
-      { activeTab: tab },
-      '',
-      `/public/dashboard?tab=${tab}`,
-    );
+    navigate(`/public/dashboard?tab=${tab}`, {
+      replace: false,
+    });
   }
 
   async function handleAcceptServiceTerms() {
@@ -640,29 +638,15 @@ export default function PublicDashboardPage() {
 
     if (tab) {
       setActiveTab(tab);
+    } else {
+      navigate('/public/dashboard?tab=dashboard', {
+        replace: true,
+      });
     }
 
     loadData();
-
-    function handlePopState() {
-      const params = new URLSearchParams(window.location.search);
-
-      const currentTab = params.get('tab') as ActiveTab | null;
-
-      if (currentTab) {
-        setActiveTab(currentTab);
-      } else {
-        setActiveTab('dashboard');
-      }
-    }
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
-
+  }, [navigate]);
+  
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="flex min-h-screen">
