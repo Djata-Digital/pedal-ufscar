@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as bcrypt from 'bcrypt';
+import { Resend } from 'resend';
 import { Repository } from 'typeorm';
 
 import { LoginDto } from './dto/login.dto';
@@ -20,7 +21,6 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
 import {
   User,
   UserStatus,
-  UserType,
 } from '../users/entities/user.entity';
 
 import { UsersService } from '../users/users.service';
@@ -53,6 +53,61 @@ export class AuthService {
 
   private generateResetCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async sendPasswordResetEmail(email: string, code: string) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    const emailFrom =
+      process.env.EMAIL_FROM || 'PEDAL UFSCar <onboarding@resend.dev>';
+
+    if (!resendApiKey) {
+      throw new BadRequestException(
+        'Serviço de e-mail ainda não configurado.',
+      );
+    }
+
+    const resend = new Resend(resendApiKey);
+
+    await resend.emails.send({
+      from: emailFrom,
+      to: email,
+      subject: 'Código de recuperação de senha - PEDAL UFSCar',
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+          <h2>Recuperação de senha - PEDAL UFSCar</h2>
+
+          <p>Olá,</p>
+
+          <p>Você solicitou a recuperação de senha da sua conta no sistema PEDAL UFSCar.</p>
+
+          <p>Use o código abaixo para criar uma nova senha:</p>
+
+          <div style="
+            margin: 24px 0;
+            padding: 18px 24px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            text-align: center;
+            color: #4f46e5;
+          ">
+            ${code}
+          </div>
+
+          <p>Este código expira em 15 minutos.</p>
+
+          <p>Se você não solicitou esta recuperação, ignore este e-mail.</p>
+
+          <p style="margin-top: 28px;">
+            Atenciosamente,<br />
+            Equipe PEDAL UFSCar
+          </p>
+        </div>
+      `,
+    });
   }
 
   private validateUserStatus(user: User) {
@@ -153,10 +208,11 @@ export class AuthService {
 
     await this.passwordResetTokensRepository.save(token);
 
+    await this.sendPasswordResetEmail(user.email, code);
+
     return {
       message:
-        'Código de recuperação gerado com sucesso. Ele expira em 15 minutos.',
-      code,
+        'Se o e-mail estiver cadastrado, um código de recuperação será enviado.',
     };
   }
 
@@ -196,56 +252,6 @@ export class AuthService {
 
     return {
       message: 'Senha redefinida com sucesso. Você já pode fazer login.',
-    };
-  }
-
-  // ROTA TEMPORÁRIA PARA CRIAR O PRIMEIRO ADMIN
-  async createFirstAdmin() {
-    const adminEmail = 'admin@pedal.com';
-    const adminPassword = '123456';
-
-    const existingAdmin = await this.usersService.findByEmail(adminEmail);
-
-    if (existingAdmin) {
-      return {
-        message: 'Admin já existe.',
-        email: adminEmail,
-        password: adminPassword,
-      };
-    }
-
-    const passwordHash = await bcrypt.hash(adminPassword, 10);
-
-    const admin = await this.usersService.createWithPassword({
-      fullName: 'Administrador PEDAL-UFSCar',
-      email: adminEmail,
-      phone: '00000000000',
-      cpf: '00000000000',
-      rg: null,
-      birthDate: new Date('2000-01-01'),
-      birthPlace: 'São Carlos / Brasil',
-      nationality: 'Brasileira',
-      ufscarNumber: 'ADMIN-001',
-      courseOrDepartment: 'Administração do Sistema',
-      address: 'UFSCar',
-      racialIdentity: 'Prefiro não responder',
-      genderIdentity: 'Prefiro não responder',
-      socialClass: 'Prefiro não responder',
-      userType: UserType.ADMIN,
-      status: UserStatus.APPROVED,
-      passwordHash,
-      photoUrl: null,
-      termsAccepted: true,
-      termsAcceptedAt: new Date(),
-      termsVersion: '1.0',
-    });
-
-    return {
-      message: 'Primeiro admin criado com sucesso.',
-      login: {
-        email: admin.email,
-        password: adminPassword,
-      },
     };
   }
 }
