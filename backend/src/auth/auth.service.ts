@@ -5,11 +5,17 @@ import {
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
 
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 import {
   User,
@@ -24,6 +30,12 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+
+    @InjectRepository(PasswordResetToken)
+    private readonly passwordResetTokensRepository: Repository<PasswordResetToken>,
   ) {}
 
   private sanitizeUser(user: User) {
@@ -37,6 +49,10 @@ export class AuthService {
       email: user.email,
       userType: user.userType,
     });
+  }
+
+  private generateResetCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private validateUserStatus(user: User) {
@@ -110,6 +126,76 @@ export class AuthService {
     return {
       user: this.sanitizeUser(user),
       accessToken: this.generateToken(user),
+    };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    if (!user) {
+      return {
+        message:
+          'Se o e-mail estiver cadastrado, um código de recuperação será enviado.',
+      };
+    }
+
+    const code = this.generateResetCode();
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    const token = this.passwordResetTokensRepository.create({
+      user,
+      code,
+      expiresAt,
+      used: false,
+    });
+
+    await this.passwordResetTokensRepository.save(token);
+
+    return {
+      message:
+        'Código de recuperação gerado com sucesso. Ele expira em 15 minutos.',
+      code,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    if (!user) {
+      throw new BadRequestException('Código inválido ou expirado.');
+    }
+
+    const token = await this.passwordResetTokensRepository.findOne({
+      where: {
+        user: { id: user.id },
+        code: dto.code,
+        used: false,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    if (!token) {
+      throw new BadRequestException('Código inválido ou expirado.');
+    }
+
+    if (token.expiresAt < new Date()) {
+      throw new BadRequestException('Código expirado.');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.usersRepository.save(user);
+
+    token.used = true;
+
+    await this.passwordResetTokensRepository.save(token);
+
+    return {
+      message: 'Senha redefinida com sucesso. Você já pode fazer login.',
     };
   }
 
