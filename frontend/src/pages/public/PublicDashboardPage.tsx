@@ -258,7 +258,7 @@ export default function PublicDashboardPage() {
         notificationsResponse,
         lostReportsResponse,
       ] = await Promise.all([
-        api.get('/equipments'),
+        api.get('/equipments/available'),
         api.get('/loan-requests'),
         api.get('/loans'),
         api.get(`/notifications/user/${currentUser.id}`),
