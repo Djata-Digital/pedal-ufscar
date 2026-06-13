@@ -219,7 +219,7 @@ export class OperatingHoursService {
     );
   }
 
-  async calculateValidReturnDate(
+    async calculateValidReturnDate(
     loanDate: Date,
     maxLoanHours: number,
   ) {
@@ -228,6 +228,7 @@ export class OperatingHoursService {
     const hours = await this.findAll();
 
     const calculatedDate = new Date(loanDate);
+
     calculatedDate.setHours(
       calculatedDate.getHours() + maxLoanHours,
     );
@@ -235,17 +236,17 @@ export class OperatingHoursService {
     for (let offset = 0; offset < 30; offset++) {
       const date = new Date(calculatedDate);
 
-      date.setDate(date.getDate() + offset);
+      date.setDate(calculatedDate.getDate() + offset);
 
       const dayOfWeek = date.getDay();
 
       const operatingHour = hours.find(
-        (hour) => hour.dayOfWeek === dayOfWeek,
+        (hour) => Number(hour.dayOfWeek) === dayOfWeek,
       );
 
       if (
         !operatingHour ||
-        !operatingHour.isOpen ||
+        operatingHour.isOpen !== true ||
         !operatingHour.openTime ||
         !operatingHour.closeTime
       ) {
@@ -262,17 +263,19 @@ export class OperatingHoursService {
         operatingHour.closeTime,
       );
 
-      if (date >= openDateTime && date <= closeDateTime) {
+      if (offset === 0) {
+        if (date < openDateTime) {
+          return openDateTime;
+        }
+
+        if (date > closeDateTime) {
+          return closeDateTime;
+        }
+
         return date;
       }
 
-      if (date < openDateTime) {
-        return openDateTime;
-      }
-
-      if (date > closeDateTime) {
-        continue;
-      }
+      return openDateTime;
     }
 
     throw new BadRequestException(
