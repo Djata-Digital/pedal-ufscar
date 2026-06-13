@@ -295,7 +295,7 @@ export default function PublicRegisterPage() {
     }
 
     if (!rgCinFile) {
-      toast.warning('Envie o RG ou CIN.');
+      toast.warning('Envie o RG, CIN, CRNM.');
       return;
     }
 
@@ -546,7 +546,7 @@ export default function PublicRegisterPage() {
               <div className="grid gap-3">
                 <label className="grid gap-1">
                   <span className="text-xs font-bold text-slate-600">
-                    RG ou CIN *
+                    RG, CIN, CRNM *
                   </span>
                   <input
                     type="file"

@@ -1022,7 +1022,7 @@ function translateStatus(status: string) {
 
 function translateDocumentType(type: string) {
   const map: Record<string, string> = {
-    rg_cin: 'RG ou CIN',
+    rg_cin: 'RG, CIN ou CRNM',
     ra_identidade_funcional: 'RA ou Identidade Funcional',
     comprovante_endereco: 'Comprovante de Endereço',
   };
