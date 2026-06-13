@@ -89,11 +89,17 @@ const nationalityMap: Record<string, string> = {
 };
 
 function countryCodeToFlag(countryCode: string) {
+  if (!countryCode || countryCode.length !== 2) {
+    return '🏳️';
+  }
+
   return countryCode
     .toUpperCase()
-    .replace(/./g, (char) =>
+    .split('')
+    .map((char) =>
       String.fromCodePoint(127397 + char.charCodeAt(0)),
-    );
+    )
+    .join('');
 }
 
 function getNationality(countryCode: string, countryName: string) {
@@ -494,10 +500,14 @@ export default function PublicRegisterPage() {
                 isClearable
                 formatOptionLabel={(country) => (
                   <div className="flex items-center gap-2">
-                    <span>{country.flag}</span>
+                    <span style={{ fontSize: 20 }}>
+                      {country.flag}
+                    </span>
                     <span>{country.label}</span>
                   </div>
                 )}
+
+
                 noOptionsMessage={() => 'Nenhum país encontrado'}
                 styles={{
                   control: (base) => ({
