@@ -74,6 +74,15 @@ interface Loan {
   signatureImage: string | null;
 }
 
+interface LoanRenewal {
+  id: string;
+  status: string;
+  requestedReturnDate: string;
+  approvedReturnDate: string | null;
+  requestReason: string | null;
+  createdAt: string;
+}
+
 interface Notification {
   id: string;
   title: string;
@@ -121,6 +130,19 @@ export default function PublicDashboardPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lostReports, setLostReports] = useState<LostReport[]>([]);
+  const [, setRenewals] = useState<LoanRenewal[]>([]);
+
+  const [selectedRenewalLoan, setSelectedRenewalLoan] =
+    useState<Loan | null>(null);
+
+  const [renewalReason, setRenewalReason] =
+    useState('');
+
+  const [renewalDate, setRenewalDate] =
+    useState('');
+
+  const [sendingRenewal, setSendingRenewal] =
+    useState(false);
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -258,12 +280,14 @@ export default function PublicDashboardPage() {
         loansResponse,
         notificationsResponse,
         lostReportsResponse,
+        renewalsResponse,
       ] = await Promise.all([
         api.get('/equipments/available'),
         api.get('/loan-requests'),
         api.get('/loans'),
         api.get(`/notifications/user/${currentUser.id}`),
         api.get('/lost-reports'),
+        api.get('/loan-renewals'),
       ]);
 
       setEquipments(equipmentsResponse.data);
@@ -287,6 +311,13 @@ export default function PublicDashboardPage() {
         lostReportsResponse.data.filter(
           (report: any) =>
             report.loan?.user?.id === currentUser.id,
+        ),
+      );
+
+      setRenewals(
+        renewalsResponse.data.filter(
+          (item: any) =>
+            item.loan?.user?.id === currentUser.id,
         ),
       );
     } catch (error: any) {
@@ -418,6 +449,28 @@ export default function PublicDashboardPage() {
     } finally {
       setSavingSignature(false);
     }
+  }
+
+  function openRenewalModal(loan: Loan) {
+    setSelectedRenewalLoan(loan);
+    setRenewalReason('');
+
+    const currentReturnDate = new Date(loan.expectedReturnDate);
+    currentReturnDate.setDate(currentReturnDate.getDate() + 1);
+
+    const year = currentReturnDate.getFullYear();
+    const month = String(currentReturnDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentReturnDate.getDate()).padStart(2, '0');
+    const hour = String(currentReturnDate.getHours()).padStart(2, '0');
+    const minute = String(currentReturnDate.getMinutes()).padStart(2, '0');
+
+    setRenewalDate(`${year}-${month}-${day}T${hour}:${minute}`);
+  }
+
+  function closeRenewalModal() {
+    setSelectedRenewalLoan(null);
+    setRenewalReason('');
+    setRenewalDate('');
   }
 
   async function handleCancelRequest(request: LoanRequest) {
@@ -633,6 +686,40 @@ export default function PublicDashboardPage() {
     }
   }
 
+  async function submitRenewalRequest() {
+  if (!selectedRenewalLoan) return;
+
+  if (!renewalDate) {
+    toast.warning('Informe a nova data.');
+    return;
+  }
+
+  try {
+    setSendingRenewal(true);
+
+    await api.post('/loan-renewals', {
+      loanId: selectedRenewalLoan.id,
+      requestedReturnDate: renewalDate,
+      requestReason: renewalReason,
+    });
+
+    toast.success(
+      'Solicitação de renovação enviada.',
+    );
+
+    closeRenewalModal();
+
+    await loadData();
+  } catch (error: any) {
+    toast.error(
+      error?.response?.data?.message ||
+        'Erro ao solicitar renovação.',
+    );
+  } finally {
+    setSendingRenewal(false);
+  }
+}
+
   useEffect(() => {
     const currentUser = loadUser();
 
@@ -818,9 +905,11 @@ export default function PublicDashboardPage() {
                 )}
 
                 {activeTab === 'loans' && (
+
                   <LoansContent
                     loans={loans}
                     onOpenSignTerm={openSignTermModal}
+                    onOpenRenewal={openRenewalModal}
                   />
                 )}
                 {activeTab === 'lostReports' && (
@@ -948,6 +1037,90 @@ export default function PublicDashboardPage() {
               <FileSignature size={18} />
               {savingSignature ? 'Salvando...' : 'Salvar assinatura'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedRenewalLoan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">
+                  Solicitar renovação
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Informe a nova data desejada para devolução da bicicleta.
+                </p>
+              </div>
+
+              <button
+                onClick={closeRenewalModal}
+                disabled={sendingRenewal}
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="mb-5 rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Bicicleta</p>
+              <p className="font-bold text-slate-900">
+                {selectedRenewalLoan.equipment.code} — {selectedRenewalLoan.equipment.name}
+              </p>
+
+              <p className="mt-3 text-sm text-slate-500">
+                Devolução atual
+              </p>
+              <p className="font-bold text-slate-900">
+                {formatDate(selectedRenewalLoan.expectedReturnDate)}
+              </p>
+            </div>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-700">
+                Nova data desejada *
+              </span>
+
+              <input
+                type="datetime-local"
+                value={renewalDate}
+                onChange={(event) => setRenewalDate(event.target.value)}
+                className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-700">
+                Motivo da renovação
+              </span>
+
+              <textarea
+                value={renewalReason}
+                onChange={(event) => setRenewalReason(event.target.value)}
+                placeholder="Ex: Preciso continuar usando a bicicleta para deslocamento no campus."
+                className="min-h-28 rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={closeRenewalModal}
+                disabled={sendingRenewal}
+                className="rounded-xl bg-slate-100 px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={submitRenewalRequest}
+                disabled={sendingRenewal}
+                className="rounded-xl bg-amber-600 px-5 py-3 font-black text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {sendingRenewal ? 'Enviando...' : 'Enviar solicitação'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1380,10 +1553,13 @@ function RequestsContent({
 function LoansContent({
   loans,
   onOpenSignTerm,
+  onOpenRenewal,
 }: {
   loans: Loan[];
   onOpenSignTerm: (loan: Loan) => void;
-}) {
+  onOpenRenewal: (loan: Loan) => void;
+}) {  
+
   return (
     <section className="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/60">
       <SectionHeader
@@ -1432,6 +1608,16 @@ function LoansContent({
 
                 <div className="flex flex-col items-start gap-2 sm:items-end">
                   <StatusBadge status={loan.status} />
+
+                  {(loan.status === 'active' ||
+                    loan.status === 'late') && (
+                    <button
+                      onClick={() => onOpenRenewal(loan)}
+                      className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+                    >
+                      Solicitar Renovação
+                    </button>
+                  )}
 
                   {!loan.responsibilityTermAccepted &&
                     (loan.status === 'active' || loan.status === 'late') && (
