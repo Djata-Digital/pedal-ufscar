@@ -110,10 +110,10 @@ export class LoansController {
       requestReason?: string;
     },
   ) {
+
     return this.loansService.requestRenewal(
       loanId,
       this.getRequestUserId(req),
-      body.requestedReturnDate,
       body.requestReason,
     );
   }

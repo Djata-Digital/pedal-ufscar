@@ -469,10 +469,9 @@ export class LoansService {
     return savedLoan;
   }
 
-  async requestRenewal(
+    async requestRenewal(
     loanId: string,
     userId: string,
-    requestedReturnDate: string,
     requestReason?: string,
   ) {
     await this.updateLateLoans();
@@ -497,18 +496,6 @@ export class LoansService {
       );
     }
 
-    const requestedDate = new Date(requestedReturnDate);
-
-    if (Number.isNaN(requestedDate.getTime())) {
-      throw new BadRequestException('Data solicitada inválida.');
-    }
-
-    if (requestedDate <= loan.expectedReturnDate) {
-      throw new BadRequestException(
-        'A nova data de devolução deve ser posterior à data atual de devolução.',
-      );
-    }
-
     const existingPending =
       await this.loanRenewalsRepository.findOne({
         where: {
@@ -523,12 +510,24 @@ export class LoansService {
       );
     }
 
+    const maxLoanHours = await this.getMaxLoanHours();
+
+    const calculatedReturnDate =
+      await this.operatingHoursService.calculateValidReturnDate(
+        loan.expectedReturnDate,
+        maxLoanHours,
+      );
+
     const renewal = this.loanRenewalsRepository.create({
       loan,
       requestedBy: loan.user,
       reviewedBy: null,
       oldExpectedReturnDate: loan.expectedReturnDate,
-      requestedReturnDate: requestedDate,
+
+      // Agora o usuário não escolhe a data.
+      // O sistema calcula automaticamente a possível nova data.
+      requestedReturnDate: calculatedReturnDate,
+
       approvedReturnDate: null,
       status: LoanRenewalStatus.PENDING,
       requestReason: requestReason || null,
@@ -542,7 +541,7 @@ export class LoansService {
     await this.notificationsService.createSuccess(
       loan.user.id,
       'Solicitação de renovação enviada',
-      `Sua solicitação de renovação da bicicleta ${loan.equipment.code} foi enviada para análise.`,
+      `Sua solicitação de renovação da bicicleta ${loan.equipment.code} foi enviada para análise. Se aprovada, a nova devolução prevista será ${calculatedReturnDate.toLocaleString('pt-BR')}.`,
     );
 
     return savedRenewal;
@@ -586,10 +585,10 @@ export class LoansService {
     });
   }
 
-  async approveRenewal(
+    async approveRenewal(
     renewalId: string,
     reviewerId: string,
-    approvedReturnDate?: string,
+    _approvedReturnDate?: string,
     reviewNotes?: string,
   ) {
     const renewal = await this.loanRenewalsRepository.findOne({
@@ -630,24 +629,27 @@ export class LoansService {
       );
     }
 
-    const finalReturnDate = approvedReturnDate
-      ? new Date(approvedReturnDate)
-      : renewal.requestedReturnDate;
+    const maxLoanHours = await this.getMaxLoanHours();
 
-    if (Number.isNaN(finalReturnDate.getTime())) {
-      throw new BadRequestException('Data aprovada inválida.');
-    }
+    const finalReturnDate =
+      await this.operatingHoursService.calculateValidReturnDate(
+        loan.expectedReturnDate,
+        maxLoanHours,
+      );
 
     if (finalReturnDate <= loan.expectedReturnDate) {
       throw new BadRequestException(
-        'A nova data aprovada deve ser posterior à data atual de devolução.',
+        'Não foi possível calcular uma nova data posterior à data atual de devolução.',
       );
     }
 
     renewal.status = LoanRenewalStatus.APPROVED;
     renewal.reviewedBy = reviewer;
     renewal.approvedReturnDate = finalReturnDate;
-    renewal.reviewNotes = reviewNotes || null;
+    renewal.requestedReturnDate = finalReturnDate;
+    renewal.reviewNotes =
+      reviewNotes ||
+      'Renovação aprovada. Nova data calculada automaticamente pelo sistema.';
     renewal.reviewedAt = new Date();
 
     loan.expectedReturnDate = finalReturnDate;
