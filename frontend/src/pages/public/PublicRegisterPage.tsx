@@ -8,6 +8,7 @@ import {
   Camera,
   Eye,
   EyeOff,
+  FileText,
   User,
   UserPlus,
 } from 'lucide-react';
@@ -38,6 +39,11 @@ const socialClassOptions = [
   'Classe E: até 1 salário mínimo',
   'Prefiro não responder',
 ];
+
+type DocumentType =
+  | 'rg_cin'
+  | 'ra_identidade_funcional'
+  | 'comprovante_endereco';
 
 export default function PublicRegisterPage() {
   const [searchParams] = useSearchParams();
@@ -70,12 +76,53 @@ export default function PublicRegisterPage() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoPreview, setPhotoPreview] = useState('');
 
+  const [rgCinFile, setRgCinFile] = useState<File | null>(null);
+  const [raFile, setRaFile] = useState<File | null>(null);
+  const [addressFile, setAddressFile] = useState<File | null>(null);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
+
+  function validateDocumentFile(file: File) {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.warning('Envie apenas PDF, JPG ou PNG.');
+      return false;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.warning('O arquivo deve ter no máximo 10 MB.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleDocumentSelected(
+    event: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<File | null>>,
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!validateDocumentFile(file)) {
+      event.target.value = '';
+      return;
+    }
+
+    setter(file);
+  }
 
   function handlePhotoSelected(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -134,6 +181,25 @@ export default function PublicRegisterPage() {
     reader.readAsDataURL(file);
   }
 
+  async function uploadUserDocument(
+    userId: string,
+    token: string,
+    type: DocumentType,
+    file: File,
+  ) {
+    const formData = new FormData();
+
+    formData.append('type', type);
+    formData.append('file', file);
+
+    await api.post(`/users/${userId}/documents`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
@@ -147,9 +213,25 @@ export default function PublicRegisterPage() {
       return;
     }
 
+    if (!rgCinFile) {
+      toast.warning('Envie o RG ou CIN.');
+      return;
+    }
+
+    if (!raFile) {
+      toast.warning('Envie o RA ou Identidade Funcional.');
+      return;
+    }
+
+    if (!addressFile) {
+      toast.warning('Envie o comprovante de endereço.');
+      return;
+    }
+
     try {
       setLoading(true);
-      await api.post('/auth/register', {
+
+      const response = await api.post('/auth/register', {
         fullName,
         email,
         phone,
@@ -169,9 +251,47 @@ export default function PublicRegisterPage() {
         photoUrl,
       });
 
+      const userId =
+        response.data?.user?.id ||
+        response.data?.id;
+
+      const token =
+        response.data?.accessToken ||
+        response.data?.token;
+
+      if (!userId || !token) {
+        toast.warning(
+          'Cadastro criado, mas o backend precisa retornar user.id e accessToken para enviar os documentos automaticamente.',
+        );
+
+        setRegistered(true);
+        return;
+      }
+
+      await uploadUserDocument(
+        userId,
+        token,
+        'rg_cin',
+        rgCinFile,
+      );
+
+      await uploadUserDocument(
+        userId,
+        token,
+        'ra_identidade_funcional',
+        raFile,
+      );
+
+      await uploadUserDocument(
+        userId,
+        token,
+        'comprovante_endereco',
+        addressFile,
+      );
+
       setRegistered(true);
 
-      toast.success('Cadastro enviado com sucesso!');
+      toast.success('Cadastro e documentos enviados com sucesso!');
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
@@ -195,8 +315,7 @@ export default function PublicRegisterPage() {
           </h1>
 
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Seu cadastro foi recebido e está aguardando aprovação da equipe responsável.
-            Após aprovação, você poderá acessar o sistema e solicitar bicicletas.
+            Seu cadastro e documentos foram recebidos e estão aguardando aprovação da equipe responsável.
           </p>
 
           <a
@@ -248,7 +367,6 @@ export default function PublicRegisterPage() {
               </div>
 
               <label className="cursor-pointer rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700">
-                
                 <div className="flex items-center gap-2">
                   <Camera size={16} />
                   Escolher foto
@@ -297,6 +415,69 @@ export default function PublicRegisterPage() {
             <input value={courseOrDepartment} onChange={(e) => setCourseOrDepartment(e.target.value)} placeholder="Curso ou departamento *" required className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
 
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço / Moradia / Campus *" required className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-700">
+                <FileText size={18} />
+                Documentos obrigatórios
+              </div>
+
+              <div className="grid gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-slate-600">
+                    RG ou CIN *
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/jpg"
+                    onChange={(e) => handleDocumentSelected(e, setRgCinFile)}
+                    required
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  />
+                  {rgCinFile && (
+                    <span className="text-xs text-green-700">
+                      Arquivo selecionado: {rgCinFile.name}
+                    </span>
+                  )}
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-slate-600">
+                    RA ou Identidade Funcional *
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/jpg"
+                    onChange={(e) => handleDocumentSelected(e, setRaFile)}
+                    required
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  />
+                  {raFile && (
+                    <span className="text-xs text-green-700">
+                      Arquivo selecionado: {raFile.name}
+                    </span>
+                  )}
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-slate-600">
+                    Comprovante de endereço do último mês *
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/jpg"
+                    onChange={(e) => handleDocumentSelected(e, setAddressFile)}
+                    required
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  />
+                  {addressFile && (
+                    <span className="text-xs text-green-700">
+                      Arquivo selecionado: {addressFile.name}
+                    </span>
+                  )}
+                </label>
+              </div>
+            </div>
 
             <select value={racialIdentity} onChange={(e) => setRacialIdentity(e.target.value)} required className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
               <option value="">Auto identificação racial *</option>
