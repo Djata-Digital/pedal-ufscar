@@ -48,10 +48,11 @@ type DocumentType =
   | 'ra_identidade_funcional'
   | 'comprovante_endereco';
 
+
 interface CountryOption {
   value: string;
   label: string;
-  flag: string;
+  flagUrl: string;
   nationality: string;
 }
 
@@ -88,19 +89,6 @@ const nationalityMap: Record<string, string> = {
   ZA: 'Sul-africana',
 };
 
-function countryCodeToFlag(countryCode: string) {
-  if (!countryCode || countryCode.length !== 2) {
-    return '🏳️';
-  }
-
-  return countryCode
-    .toUpperCase()
-    .split('')
-    .map((char) =>
-      String.fromCodePoint(127397 + char.charCodeAt(0)),
-    )
-    .join('');
-}
 
 function getNationality(countryCode: string, countryName: string) {
   return nationalityMap[countryCode] || `Natural de ${countryName}`;
@@ -120,7 +108,7 @@ export default function PublicRegisterPage() {
       .map((country: { value: string; label: string }) => ({
         value: country.value,
         label: country.label,
-        flag: countryCodeToFlag(country.value),
+        flagUrl: `https://flagcdn.com/w40/${country.value.toLowerCase()}.png`,
         nationality: getNationality(country.value, country.label),
       }));
   }, []);
@@ -500,9 +488,11 @@ export default function PublicRegisterPage() {
                 isClearable
                 formatOptionLabel={(country) => (
                   <div className="flex items-center gap-2">
-                    <span style={{ fontSize: 20 }}>
-                      {country.flag}
-                    </span>
+                    <img
+                      src={country.flagUrl}
+                      alt={country.label}
+                      className="h-4 w-6 rounded-sm object-cover"
+                    />
                     <span>{country.label}</span>
                   </div>
                 )}
