@@ -107,13 +107,15 @@ export default function PublicRegisterPage() {
   const loginUrl = `/public/login?redirect=${encodeURIComponent(redirectTo)}`;
 
   const countryOptions: CountryOption[] = useMemo(() => {
-    return Object.entries(
-      countries.getNames('pt-BR', { select: 'official' }),
-    ).map(([code, name]) => ({
+    const names = countries.getNames('pt', {
+      select: 'official',
+    });
+
+    return Object.entries(names).map(([code, name]) => ({
       value: code,
-      label: name,
+      label: String(name),
       flagUrl: `https://flagcdn.com/w40/${code.toLowerCase()}.png`,
-      nationality: getNationality(code, name),
+      nationality: getNationality(code, String(name)),
     }));
   }, []);
 
