@@ -243,7 +243,7 @@ export class OperatingHoursService {
     );
   }
 
-  async calculateValidReturnDate(
+    async calculateValidReturnDate(
     loanDate: Date,
     maxLoanHours: number,
   ) {
@@ -277,29 +277,12 @@ export class OperatingHoursService {
         continue;
       }
 
-      const openDateTime = this.buildLocalDateTime(
-        date,
-        operatingHour.openTime,
-      );
-
       const closeDateTime = this.buildLocalDateTime(
         date,
         operatingHour.closeTime,
       );
 
-      if (offset === 0) {
-        if (calculatedDate < openDateTime) {
-          return openDateTime;
-        }
-
-        if (calculatedDate > closeDateTime) {
-          return closeDateTime;
-        }
-
-        return calculatedDate;
-      }
-
-      return openDateTime;
+      return closeDateTime;
     }
 
     throw new BadRequestException(
