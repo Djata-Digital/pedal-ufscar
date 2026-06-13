@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import Select from 'react-select';
-import countryList from 'react-select-country-list';
+
+import countries from 'i18n-iso-countries';
+import ptBR from 'i18n-iso-countries/langs/pt.json';
 
 import { toast } from 'sonner';
 
@@ -17,6 +19,8 @@ import {
 } from 'lucide-react';
 
 import { api } from '../../api/api';
+
+countries.registerLocale(ptBR);
 
 const racialIdentityOptions = [
   'Amarelo',
@@ -103,14 +107,14 @@ export default function PublicRegisterPage() {
   const loginUrl = `/public/login?redirect=${encodeURIComponent(redirectTo)}`;
 
   const countryOptions: CountryOption[] = useMemo(() => {
-    return countryList()
-      .getData()
-      .map((country: { value: string; label: string }) => ({
-        value: country.value,
-        label: country.label,
-        flagUrl: `https://flagcdn.com/w40/${country.value.toLowerCase()}.png`,
-        nationality: getNationality(country.value, country.label),
-      }));
+    return Object.entries(
+      countries.getNames('pt-BR', { select: 'official' }),
+    ).map(([code, name]) => ({
+      value: code,
+      label: name,
+      flagUrl: `https://flagcdn.com/w40/${code.toLowerCase()}.png`,
+      nationality: getNationality(code, name),
+    }));
   }, []);
 
   const [selectedCountry, setSelectedCountry] =
