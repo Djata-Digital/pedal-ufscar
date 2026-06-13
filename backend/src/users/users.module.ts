@@ -6,11 +6,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+
 import { User } from './entities/user.entity';
+import { UserDocument } from './entities/user-document.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UserDocument]),
     AuditLogsModule,
     NotificationsModule,
   ],

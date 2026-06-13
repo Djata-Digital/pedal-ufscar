@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { UserDocument } from './user-document.entity';
 
 export enum UserType {
   STUDENT = 'student',
@@ -163,6 +166,13 @@ export class User {
     nullable: true,
   })
   photoUrl!: string | null;
+
+  // ===========================
+  // DOCUMENTOS DO CADASTRO
+  // ===========================
+
+  @OneToMany(() => UserDocument, (document) => document.user)
+  documents!: UserDocument[];
 
   // ===========================
   // TERMOS DE USO DO SISTEMA

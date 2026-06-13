@@ -155,6 +155,7 @@ export class AuthService {
 
     return {
       user: this.sanitizeUser(user),
+      accessToken: this.generateToken(user),
       message:
         'Cadastro realizado com sucesso. Aguarde aprovação da administração.',
     };

@@ -17,11 +17,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { User, UserStatus, UserType } from './entities/user.entity';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 
+import {
+  UserDocument,
+  UserDocumentType,
+} from './entities/user-document.entity';
+
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+
+    @InjectRepository(UserDocument)
+    private readonly userDocumentsRepository: Repository<UserDocument>,
 
     private readonly auditLogsService: AuditLogsService,
 
@@ -177,6 +185,9 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.usersRepository.findOne({
       where: { id },
+      relations: {
+        documents: true,
+      },
     });
 
     if (!user) {
@@ -357,5 +368,98 @@ export class UsersService {
     );
 
     return savedUser;
+  }
+
+  // =====================================
+  // DOCUMENTOS DO USUÁRIO
+  // =====================================
+
+  async uploadDocument(
+    id: string,
+    file: Express.Multer.File,
+    type: UserDocumentType,
+  ) {
+    if (!file) {
+      throw new BadRequestException('O arquivo do documento é obrigatório.');
+    }
+
+    if (!type) {
+      throw new BadRequestException('O tipo do documento é obrigatório.');
+    }
+
+    const allowedTypes = Object.values(UserDocumentType);
+
+    if (!allowedTypes.includes(type)) {
+      throw new BadRequestException('Tipo de documento inválido.');
+    }
+
+    const allowedMimeTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Formato inválido. Envie PDF, JPG ou PNG.',
+      );
+    }
+
+    const user = await this.findOne(id);
+
+    const fileUrl = `/uploads/user-documents/${file.filename}`;
+
+    let document = await this.userDocumentsRepository.findOne({
+      where: {
+        user: {
+          id: user.id,
+        },
+        type,
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (document) {
+      document.fileUrl = fileUrl;
+      document.originalName = file.originalname;
+      document.mimeType = file.mimetype;
+    } else {
+      document = this.userDocumentsRepository.create({
+        type,
+        fileUrl,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        user,
+      });
+    }
+
+    const savedDocument = await this.userDocumentsRepository.save(document);
+
+    await this.auditLogsService.register({
+      action: AuditAction.UPDATE_USER,
+      entity: 'user_documents',
+      entityId: savedDocument.id,
+      description: `Documento enviado/atualizado para o usuário ${user.fullName} (${user.email}): ${type}`,
+    });
+
+    return savedDocument;
+  }
+
+  async getDocuments(id: string) {
+    const user = await this.findOne(id);
+
+    return this.userDocumentsRepository.find({
+      where: {
+        user: {
+          id: user.id,
+        },
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
   }
 }
