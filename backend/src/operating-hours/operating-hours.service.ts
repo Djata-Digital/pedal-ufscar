@@ -94,6 +94,18 @@ export class OperatingHoursService {
     return localDate;
   }
 
+  private formatDateOnly(date: Date) {
+    return `${date.getFullYear()}-${String(
+      date.getMonth() + 1,
+    ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private formatTimeOnly(date: Date) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(
+      date.getMinutes(),
+    ).padStart(2, '0')}`;
+  }
+
   async findAll() {
     await this.ensureDefaultHours();
 
@@ -168,6 +180,7 @@ export class OperatingHoursService {
 
     for (let offset = 0; offset < 30; offset++) {
       const date = new Date(fromDate);
+
       date.setDate(fromDate.getDate() + offset);
 
       const dayOfWeek = date.getDay();
@@ -195,20 +208,31 @@ export class OperatingHoursService {
         operatingHour.closeTime,
       );
 
-      if (offset === 0 && fromDate > closeDateTime) {
+      if (offset === 0) {
+        if (fromDate < openDateTime) {
+          return {
+            pickupDate: this.formatDateOnly(date),
+            pickupStartTime: operatingHour.openTime,
+            pickupEndTime: operatingHour.closeTime,
+            dayOfWeek,
+          };
+        }
+
+        if (fromDate >= openDateTime && fromDate <= closeDateTime) {
+          return {
+            pickupDate: this.formatDateOnly(date),
+            pickupStartTime: this.formatTimeOnly(fromDate),
+            pickupEndTime: operatingHour.closeTime,
+            dayOfWeek,
+          };
+        }
+
         continue;
       }
 
       return {
-        pickupDate: `${date.getFullYear()}-${String(
-          date.getMonth() + 1,
-        ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
-        pickupStartTime:
-          offset === 0 && fromDate >= openDateTime
-            ? `${String(fromDate.getHours()).padStart(2, '0')}:${String(
-                fromDate.getMinutes(),
-              ).padStart(2, '0')}`
-            : operatingHour.openTime,
+        pickupDate: this.formatDateOnly(date),
+        pickupStartTime: operatingHour.openTime,
         pickupEndTime: operatingHour.closeTime,
         dayOfWeek,
       };
@@ -228,6 +252,7 @@ export class OperatingHoursService {
     const hours = await this.findAll();
 
     const calculatedDate = new Date(loanDate);
+
     calculatedDate.setHours(
       calculatedDate.getHours() + maxLoanHours,
     );
@@ -235,17 +260,17 @@ export class OperatingHoursService {
     for (let offset = 0; offset < 30; offset++) {
       const date = new Date(calculatedDate);
 
-      date.setDate(date.getDate() + offset);
+      date.setDate(calculatedDate.getDate() + offset);
 
       const dayOfWeek = date.getDay();
 
       const operatingHour = hours.find(
-        (hour) => hour.dayOfWeek === dayOfWeek,
+        (hour) => Number(hour.dayOfWeek) === dayOfWeek,
       );
 
       if (
         !operatingHour ||
-        !operatingHour.isOpen ||
+        operatingHour.isOpen !== true ||
         !operatingHour.openTime ||
         !operatingHour.closeTime
       ) {
@@ -262,17 +287,19 @@ export class OperatingHoursService {
         operatingHour.closeTime,
       );
 
-      if (date >= openDateTime && date <= closeDateTime) {
-        return date;
+      if (offset === 0) {
+        if (calculatedDate < openDateTime) {
+          return openDateTime;
+        }
+
+        if (calculatedDate > closeDateTime) {
+          return closeDateTime;
+        }
+
+        return calculatedDate;
       }
 
-      if (date < openDateTime) {
-        return openDateTime;
-      }
-
-      if (date > closeDateTime) {
-        continue;
-      }
+      return openDateTime;
     }
 
     throw new BadRequestException(
