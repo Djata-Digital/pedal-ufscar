@@ -129,9 +129,6 @@ export default function PublicDashboardPage() {
   const [renewalReason, setRenewalReason] =
     useState('');
 
-  const [renewalDate, setRenewalDate] =
-    useState('');
-
   const [sendingRenewal, setSendingRenewal] =
     useState(false);
   const [loading, setLoading] = useState(true);
@@ -433,25 +430,13 @@ export default function PublicDashboardPage() {
   }
 
   function openRenewalModal(loan: Loan) {
-    setSelectedRenewalLoan(loan);
-    setRenewalReason('');
-
-    const currentReturnDate = new Date(loan.expectedReturnDate);
-    currentReturnDate.setDate(currentReturnDate.getDate() + 1);
-
-    const year = currentReturnDate.getFullYear();
-    const month = String(currentReturnDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentReturnDate.getDate()).padStart(2, '0');
-    const hour = String(currentReturnDate.getHours()).padStart(2, '0');
-    const minute = String(currentReturnDate.getMinutes()).padStart(2, '0');
-
-    setRenewalDate(`${year}-${month}-${day}T${hour}:${minute}`);
-  }
+  setSelectedRenewalLoan(loan);
+  setRenewalReason('');
+}
 
   function closeRenewalModal() {
     setSelectedRenewalLoan(null);
     setRenewalReason('');
-    setRenewalDate('');
   }
 
   async function handleCancelRequest(request: LoanRequest) {
@@ -670,16 +655,11 @@ export default function PublicDashboardPage() {
   async function submitRenewalRequest() {
   if (!selectedRenewalLoan) return;
 
-  if (!renewalDate) {
-    toast.warning('Informe a nova data.');
-    return;
-  }
-
+  
   try {
     setSendingRenewal(true);
 
     await api.post(`/loans/${selectedRenewalLoan.id}/request-renewal`, {
-      requestedReturnDate: renewalDate,
       requestReason: renewalReason,
     });
 
@@ -1057,19 +1037,6 @@ export default function PublicDashboardPage() {
                 {formatDate(selectedRenewalLoan.expectedReturnDate)}
               </p>
             </div>
-
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-bold text-slate-700">
-                Nova data desejada *
-              </span>
-
-              <input
-                type="datetime-local"
-                value={renewalDate}
-                onChange={(event) => setRenewalDate(event.target.value)}
-                className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
-            </label>
 
             <label className="mt-4 flex flex-col gap-2">
               <span className="text-sm font-bold text-slate-700">
