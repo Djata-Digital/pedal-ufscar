@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+
+import Select from 'react-select';
+import countryList from 'react-select-country-list';
 
 import { toast } from 'sonner';
 
@@ -45,6 +48,58 @@ type DocumentType =
   | 'ra_identidade_funcional'
   | 'comprovante_endereco';
 
+interface CountryOption {
+  value: string;
+  label: string;
+  flag: string;
+  nationality: string;
+}
+
+const nationalityMap: Record<string, string> = {
+  BR: 'Brasileira',
+  GW: 'Guineense',
+  PT: 'Portuguesa',
+  AO: 'Angolana',
+  CV: 'Cabo-verdiana',
+  MZ: 'Moçambicana',
+  ST: 'São-tomense',
+  TL: 'Timorense',
+  AR: 'Argentina',
+  CL: 'Chilena',
+  UY: 'Uruguaia',
+  PY: 'Paraguaia',
+  BO: 'Boliviana',
+  PE: 'Peruana',
+  CO: 'Colombiana',
+  VE: 'Venezuelana',
+  US: 'Estadunidense',
+  CA: 'Canadense',
+  FR: 'Francesa',
+  ES: 'Espanhola',
+  IT: 'Italiana',
+  DE: 'Alemã',
+  GB: 'Britânica',
+  CN: 'Chinesa',
+  JP: 'Japonesa',
+  IN: 'Indiana',
+  NG: 'Nigeriana',
+  SN: 'Senegalesa',
+  GH: 'Ganesa',
+  ZA: 'Sul-africana',
+};
+
+function countryCodeToFlag(countryCode: string) {
+  return countryCode
+    .toUpperCase()
+    .replace(/./g, (char) =>
+      String.fromCodePoint(127397 + char.charCodeAt(0)),
+    );
+}
+
+function getNationality(countryCode: string, countryName: string) {
+  return nationalityMap[countryCode] || `Natural de ${countryName}`;
+}
+
 export default function PublicRegisterPage() {
   const [searchParams] = useSearchParams();
 
@@ -52,6 +107,20 @@ export default function PublicRegisterPage() {
     searchParams.get('redirect') || '/public/dashboard';
 
   const loginUrl = `/public/login?redirect=${encodeURIComponent(redirectTo)}`;
+
+  const countryOptions: CountryOption[] = useMemo(() => {
+    return countryList()
+      .getData()
+      .map((country: { value: string; label: string }) => ({
+        value: country.value,
+        label: country.label,
+        flag: countryCodeToFlag(country.value),
+        nationality: getNationality(country.value, country.label),
+      }));
+  }, []);
+
+  const [selectedCountry, setSelectedCountry] =
+    useState<CountryOption | null>(null);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -86,6 +155,19 @@ export default function PublicRegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
+
+  function handleCountryChange(country: CountryOption | null) {
+    setSelectedCountry(country);
+
+    if (!country) {
+      setBirthPlace('');
+      setNationality('');
+      return;
+    }
+
+    setBirthPlace(country.label);
+    setNationality(country.nationality);
+  }
 
   function validateDocumentFile(file: File) {
     const allowedTypes = [
@@ -203,6 +285,11 @@ export default function PublicRegisterPage() {
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
+    if (!birthPlace || !nationality) {
+      toast.warning('Selecione o país de naturalidade.');
+      return;
+    }
+
     if (password.length < 6) {
       toast.warning('A senha deve ter pelo menos 6 caracteres.');
       return;
@@ -268,20 +355,13 @@ export default function PublicRegisterPage() {
         return;
       }
 
-      await uploadUserDocument(
-        userId,
-        token,
-        'rg_cin',
-        rgCinFile,
-      );
-
+      await uploadUserDocument(userId, token, 'rg_cin', rgCinFile);
       await uploadUserDocument(
         userId,
         token,
         'ra_identidade_funcional',
         raFile,
       );
-
       await uploadUserDocument(
         userId,
         token,
@@ -399,9 +479,50 @@ export default function PublicRegisterPage() {
               <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
             </label>
 
-            <input value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Naturalidade (Cidade/País) *" required className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+            <div className="grid gap-2">
+              <label className="text-sm font-bold text-slate-600">
+                País de naturalidade *
+              </label>
 
-            <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Nacionalidade *" required className="h-12 rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+              <Select
+                value={selectedCountry}
+                onChange={(option) =>
+                  handleCountryChange(option as CountryOption | null)
+                }
+                options={countryOptions}
+                placeholder="Digite ou selecione o país"
+                isClearable
+                formatOptionLabel={(country) => (
+                  <div className="flex items-center gap-2">
+                    <span>{country.flag}</span>
+                    <span>{country.label}</span>
+                  </div>
+                )}
+                noOptionsMessage={() => 'Nenhum país encontrado'}
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    minHeight: 48,
+                    borderRadius: 12,
+                    borderColor: '#e2e8f0',
+                    boxShadow: 'none',
+                    fontSize: 14,
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 50,
+                  }),
+                }}
+              />
+            </div>
+
+            <input
+              value={nationality}
+              readOnly
+              placeholder="Nacionalidade será preenchida automaticamente *"
+              required
+              className="h-12 rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-semibold text-slate-600 outline-none"
+            />
 
             <select value={userType} onChange={(e) => setUserType(e.target.value)} required className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
               <option value="student">Discente</option>
