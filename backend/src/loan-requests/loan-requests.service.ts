@@ -206,11 +206,13 @@ export class LoanRequestsService {
     if (equipment.status !== EquipmentStatus.AVAILABLE) {
       throw new BadRequestException('Esta bicicleta não está disponível.');
     }
-
     const request = this.loanRequestsRepository.create({
       user,
       equipment,
-      expectedReturnDate: new Date(dto.expectedReturnDate),
+
+      // Data provisória. A data real da devolução será calculada na retirada.
+      expectedReturnDate: new Date(),
+
       purpose: dto.purpose || null,
       notes: dto.notes || null,
       status: LoanRequestStatus.PENDING,
