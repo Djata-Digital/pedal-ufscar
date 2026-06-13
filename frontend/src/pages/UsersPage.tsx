@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
   Eye,
+  FileText,
   ImageIcon,
   PauseCircle,
   RefreshCw,
@@ -28,22 +29,26 @@ interface User {
   cpf: string | null;
   rg: string | null;
   birthDate: string | null;
-
   birthPlace: string | null;
   nationality: string | null;
-
   ufscarNumber: string | null;
   courseOrDepartment: string | null;
   address: string | null;
-
   userType: string;
   status: string;
-
   racialIdentity: string | null;
   genderIdentity: string | null;
   socialClass: string | null;
-
   photoUrl: string | null;
+  createdAt: string;
+}
+
+interface UserDocument {
+  id: string;
+  type: string;
+  fileUrl: string;
+  originalName: string;
+  mimeType: string;
   createdAt: string;
 }
 
@@ -114,10 +119,7 @@ export default function UsersPage() {
   }
 
   function openActionModal(user: User, action: UserAction) {
-    setSelectedAction({
-      user,
-      action,
-    });
+    setSelectedAction({ user, action });
   }
 
   function closeActionModal() {
@@ -131,7 +133,6 @@ export default function UsersPage() {
 
   function closeCreateInternalUserModal() {
     if (creatingInternalUser) return;
-
     setShowCreateInternalUserModal(false);
     setInternalUserForm(initialInternalUserForm);
   }
@@ -235,7 +236,6 @@ export default function UsersPage() {
       `.toLowerCase();
 
       const matchesSearch = searchText.includes(search.toLowerCase());
-
       const matchesStatus =
         statusFilter === 'all' || user.status === statusFilter;
 
@@ -252,14 +252,11 @@ export default function UsersPage() {
         Telefone: user.phone || '',
         CPF: user.cpf || '',
         RG: user.rg || '',
-
         Naturalidade: user.birthPlace || '',
         Nacionalidade: user.nationality || '',
-
         RacaCor: user.racialIdentity || '',
         Genero: user.genderIdentity || '',
         ClasseSocial: user.socialClass || '',
-
         Tipo: translateUserType(user.userType),
         Status: translateStatus(user.status),
       })),
@@ -285,7 +282,7 @@ export default function UsersPage() {
               </h1>
 
               <p className="mt-1 text-slate-500">
-                Visualize dados completos, fotos de perfil e aprove cadastros.
+                Visualize dados completos, fotos de perfil, documentos e aprove cadastros.
               </p>
             </div>
           </div>
@@ -518,49 +515,12 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  label="Nome completo"
-                  value={internalUserForm.fullName}
-                  onChange={(value) => updateInternalUserForm('fullName', value)}
-                  placeholder="Ex: Maria Silva"
-                />
-
-                <FormField
-                  label="E-mail"
-                  value={internalUserForm.email}
-                  onChange={(value) => updateInternalUserForm('email', value)}
-                  placeholder="usuario@ufscar.br"
-                  type="email"
-                />
-
-                <FormField
-                  label="Telefone"
-                  value={internalUserForm.phone}
-                  onChange={(value) => updateInternalUserForm('phone', value)}
-                  placeholder="(16) 99999-9999"
-                />
-
-                <FormField
-                  label="CPF"
-                  value={internalUserForm.cpf}
-                  onChange={(value) => updateInternalUserForm('cpf', value)}
-                  placeholder="000.000.000-00"
-                />
-
-                <FormField
-                  label="RG"
-                  value={internalUserForm.rg}
-                  onChange={(value) => updateInternalUserForm('rg', value)}
-                  placeholder="00.000.000-0"
-                />
-
-                <FormField
-                  label="Senha provisória"
-                  value={internalUserForm.password}
-                  onChange={(value) => updateInternalUserForm('password', value)}
-                  placeholder="Digite uma senha provisória"
-                  type="password"
-                />
+                <FormField label="Nome completo" value={internalUserForm.fullName} onChange={(value) => updateInternalUserForm('fullName', value)} placeholder="Ex: Maria Silva" />
+                <FormField label="E-mail" value={internalUserForm.email} onChange={(value) => updateInternalUserForm('email', value)} placeholder="usuario@ufscar.br" type="email" />
+                <FormField label="Telefone" value={internalUserForm.phone} onChange={(value) => updateInternalUserForm('phone', value)} placeholder="(16) 99999-9999" />
+                <FormField label="CPF" value={internalUserForm.cpf} onChange={(value) => updateInternalUserForm('cpf', value)} placeholder="000.000.000-00" />
+                <FormField label="RG" value={internalUserForm.rg} onChange={(value) => updateInternalUserForm('rg', value)} placeholder="00.000.000-0" />
+                <FormField label="Senha provisória" value={internalUserForm.password} onChange={(value) => updateInternalUserForm('password', value)} placeholder="Digite uma senha provisória" type="password" />
 
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
@@ -714,6 +674,30 @@ function UserDetailsModal({
   onPhotoClick: (photoUrl: string) => void;
   onAction: (user: User, action: UserAction) => void;
 }) {
+  const [documents, setDocuments] = useState<UserDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [user.id]);
+
+  async function loadDocuments() {
+    try {
+      setLoadingDocuments(true);
+
+      const response = await api.get(`/users/${user.id}/documents`);
+
+      setDocuments(response.data);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          'Erro ao carregar documentos.',
+      );
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
       <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
@@ -724,7 +708,7 @@ function UserDetailsModal({
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Revise as informações antes de aprovar ou alterar o status.
+              Revise as informações e documentos antes de aprovar ou alterar o status.
             </p>
           </div>
 
@@ -780,17 +764,11 @@ function UserDetailsModal({
             label="Data de nascimento"
             value={user.birthDate ? formatDate(user.birthDate) : null}
           />
-
           <InfoItem
             label="Naturalidade (Cidade / País)"
             value={user.birthPlace}
           />
-
-          <InfoItem
-            label="Nacionalidade"
-            value={user.nationality}
-          />
-
+          <InfoItem label="Nacionalidade" value={user.nationality} />
           <InfoItem
             label="Nº UFSCar / RA / Matrícula"
             value={user.ufscarNumber}
@@ -801,6 +779,55 @@ function UserDetailsModal({
           <InfoItem label="Identidade de gênero" value={user.genderIdentity} />
           <InfoItem label="Classe social" value={user.socialClass} />
           <InfoItem label="Data de cadastro" value={formatDate(user.createdAt)} />
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-black text-slate-900">
+            <FileText size={20} />
+            Documentos enviados
+          </h3>
+
+          {loadingDocuments ? (
+            <p className="text-sm font-semibold text-slate-500">
+              Carregando documentos...
+            </p>
+          ) : documents.length === 0 ? (
+            <p className="text-sm font-semibold text-slate-500">
+              Nenhum documento enviado.
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              {documents.map((document) => (
+                <div
+                  key={document.id}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-bold text-slate-900">
+                      {translateDocumentType(document.type)}
+                    </p>
+
+                    <p className="text-xs text-slate-500">
+                      {document.originalName}
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                      Enviado em {formatDate(document.createdAt)}
+                    </p>
+                  </div>
+
+                  <a
+                    href={getDocumentUrl(document.fileUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+                  >
+                    Visualizar
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
@@ -991,6 +1018,26 @@ function translateStatus(status: string) {
   };
 
   return map[status] || status;
+}
+
+function translateDocumentType(type: string) {
+  const map: Record<string, string> = {
+    rg_cin: 'RG ou CIN',
+    ra_identidade_funcional: 'RA ou Identidade Funcional',
+    comprovante_endereco: 'Comprovante de Endereço',
+  };
+
+  return map[type] || type;
+}
+
+function getDocumentUrl(fileUrl: string) {
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+
+  if (fileUrl.startsWith('http')) {
+    return fileUrl;
+  }
+
+  return `${apiUrl}${fileUrl}`;
 }
 
 function formatDate(value: string) {
