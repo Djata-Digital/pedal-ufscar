@@ -28,6 +28,15 @@ export class LoansController {
     private readonly loansService: LoansService,
   ) {}
 
+  private getRequestUserId(req: any) {
+    return (
+      req.user?.sub ||
+      req.user?.userId ||
+      req.user?.id ||
+      req.user?.user?.id
+    );
+  }
+
   @Roles(UserType.ADMIN, UserType.OPERATOR)
   @Post()
   create(
@@ -103,7 +112,7 @@ export class LoansController {
   ) {
     return this.loansService.requestRenewal(
       loanId,
-      req.user.sub,
+      this.getRequestUserId(req),
       body.requestedReturnDate,
       body.requestReason,
     );
@@ -147,7 +156,7 @@ export class LoansController {
   ) {
     return this.loansService.approveRenewal(
       renewalId,
-      req.user.sub,
+      this.getRequestUserId(req),
       body.approvedReturnDate,
       body.reviewNotes,
     );
@@ -168,7 +177,7 @@ export class LoansController {
   ) {
     return this.loansService.rejectRenewal(
       renewalId,
-      req.user.sub,
+      this.getRequestUserId(req),
       body.reviewNotes,
     );
   }
