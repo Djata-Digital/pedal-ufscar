@@ -99,7 +99,7 @@ export default function PublicEquipmentPage() {
     try {
       setRequesting(true);
 
-      await api.post('/loans-requests', {
+      await api.post('/loan-requests', {
         userId: user.id,
         equipmentId: equipment.id,
         expectedReturnDate: expectedReturnDate.toISOString(),

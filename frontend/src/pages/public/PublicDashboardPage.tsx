@@ -283,7 +283,7 @@ export default function PublicDashboardPage() {
         renewalsResponse,
       ] = await Promise.all([
         api.get('/equipments/available'),
-        api.get('/loans-requests'),
+        api.get('/loan-requests'),
         api.get('/loans'),
         api.get(`/notifications/user/${currentUser.id}`),
         api.get('/lost-reports'),
@@ -353,7 +353,7 @@ export default function PublicDashboardPage() {
       const expectedReturnDate = new Date();
       expectedReturnDate.setHours(expectedReturnDate.getHours() + maxLoanHours);
 
-      await api.post('/loans-requests', {
+      await api.post('/loan-requests', {
         userId: user.id,
         equipmentId: equipment.id,
         expectedReturnDate: expectedReturnDate.toISOString(),
@@ -481,7 +481,7 @@ export default function PublicDashboardPage() {
     if (!confirmed) return;
 
     try {
-      await api.patch(`/loans-requests/${request.id}/cancel`);
+      await api.patch(`/loan-requests/${request.id}/cancel`);
 
       toast.success('Solicitação cancelada com sucesso!');
       await loadData();
