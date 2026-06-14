@@ -108,7 +108,7 @@ export class LoanRequestsService {
       year: 'numeric',
     });
 
-    return `${dateText}, entre ${pickupStartTime} e ${pickupEndTime}`;
+    return `${dateText}, das ${pickupStartTime} às ${pickupEndTime}`;
   }
 
   async expireApprovedRequests() {
