@@ -37,6 +37,7 @@ interface User {
   userType: string;
   status: string;
   racialIdentity: string | null;
+  indigenousPeople: string | null;
   genderIdentity: string | null;
   socialClass: string | null;
   photoUrl: string | null;
@@ -775,9 +776,27 @@ function UserDetailsModal({
           />
           <InfoItem label="Curso / Departamento" value={user.courseOrDepartment} />
           <InfoItem label="Endereço / Moradia / Campus" value={user.address} />
-          <InfoItem label="Identidade racial" value={user.racialIdentity} />
-          <InfoItem label="Identidade de gênero" value={user.genderIdentity} />
-          <InfoItem label="Classe social" value={user.socialClass} />
+          <InfoItem
+            label="Identidade racial"
+            value={user.racialIdentity}
+          />
+
+          {user.racialIdentity === 'Indígena' && (
+            <InfoItem
+              label="Povo indígena"
+              value={(user as any).indigenousPeople}
+            />
+          )}
+
+          <InfoItem
+            label="Identidade de gênero"
+            value={user.genderIdentity}
+          />
+
+          <InfoItem
+            label="Classe social"
+            value={user.socialClass}
+          />
           <InfoItem label="Data de cadastro" value={formatDate(user.createdAt)} />
         </div>
 
