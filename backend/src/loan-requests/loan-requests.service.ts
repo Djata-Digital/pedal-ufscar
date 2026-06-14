@@ -487,8 +487,9 @@ export class LoanRequestsService {
       'Bicicleta retirada',
       `A bicicleta ${equipment.code} — ${equipment.name} foi retirada e o empréstimo está ativo. ${
         accessoriesText ? accessoriesText + '. ' : ''
-      }A devolução está prevista para ${expectedReturnDate.toLocaleString('pt-BR')}, respeitando o horário de funcionamento do PEDAL-UFSCar.`,
+      }A devolução deve ser feita no dia ${expectedReturnDate.toLocaleDateString('pt-BR')}, dentro do horário de funcionamento do PEDAL-UFSCar.`,
     );
+    
 
     return savedRequest;
   }
