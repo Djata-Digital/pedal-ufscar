@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 import { NavLink, useNavigate } from 'react-router-dom';
+import { socket } from '../realtime/socket';
 
 import {
   BarChart3,
@@ -76,14 +77,43 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     loadAlerts();
 
+    socket.connect();
+
+    if (user?.id) {
+      socket.emit('register-user', {
+        userId: user.id,
+        userType: user.userType,
+      });
+    }
+
+    socket.on('notifications.updated', () => {
+      loadAlerts();
+    });
+
+    socket.on('dashboard.updated', () => {
+      loadAlerts();
+    });
+
+    socket.on('users.updated', () => {
+      loadAlerts();
+    });
+
+    socket.on('loan-requests.updated', () => {
+      loadAlerts();
+    });
+
     const interval = window.setInterval(() => {
       loadAlerts();
     }, 30000);
 
     return () => {
+      socket.off('notifications.updated');
+      socket.off('dashboard.updated');
+      socket.off('users.updated');
+      socket.off('loan-requests.updated');
       window.clearInterval(interval);
     };
-  }, []);
+  }, [user?.id, user?.userType]);
 
   const menuItems: MenuItem[] = [
     { label: 'Dashboard', path: '/dashboard', icon: Home },

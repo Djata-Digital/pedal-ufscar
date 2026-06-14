@@ -753,8 +753,8 @@ export default function PublicDashboardPage() {
     });
 
     return () => {
-      socket.off('notification-created');
-      socket.off('dashboard-refresh');
+      socket.off('notifications.updated');
+      socket.off('dashboard.updated');
     };
   }, [user]);
 
