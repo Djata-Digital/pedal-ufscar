@@ -256,6 +256,7 @@ export default function UsersPage() {
         Naturalidade: user.birthPlace || '',
         Nacionalidade: user.nationality || '',
         RacaCor: user.racialIdentity || '',
+        PovoIndigena: user.indigenousPeople || '',
         Genero: user.genderIdentity || '',
         ClasseSocial: user.socialClass || '',
         Tipo: translateUserType(user.userType),
