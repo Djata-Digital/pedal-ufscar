@@ -15,6 +15,8 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 
 import { User } from '../users/entities/user.entity';
 
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -23,6 +25,8 @@ export class NotificationsService {
 
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+
+    private readonly realtimeGateway: RealtimeGateway,
   ) {}
 
   async create(dto: CreateNotificationDto) {
@@ -44,7 +48,29 @@ export class NotificationsService {
       isRead: false,
     });
 
-    return this.notificationsRepository.save(notification);
+    const savedNotification =
+      await this.notificationsRepository.save(notification);
+
+    this.realtimeGateway.emitToUser(
+      user.id,
+      'notifications.updated',
+      savedNotification,
+    );
+
+    this.realtimeGateway.emitToAdmins(
+      'notifications.updated',
+      savedNotification,
+    );
+
+    this.realtimeGateway.emitToAdmins(
+      'dashboard.updated',
+      {
+        source: 'notifications',
+        userId: user.id,
+      },
+    );
+
+    return savedNotification;
   }
 
   async createInfo(
@@ -113,6 +139,9 @@ export class NotificationsService {
         where: {
           id,
         },
+        relations: {
+          user: true,
+        },
       });
 
     if (!notification) {
@@ -123,7 +152,16 @@ export class NotificationsService {
 
     notification.isRead = true;
 
-    return this.notificationsRepository.save(notification);
+    const savedNotification =
+      await this.notificationsRepository.save(notification);
+
+    this.realtimeGateway.emitToUser(
+      savedNotification.user.id,
+      'notifications.updated',
+      savedNotification,
+    );
+
+    return savedNotification;
   }
 
   async markAllAsRead(userId: string) {
@@ -134,14 +172,26 @@ export class NotificationsService {
             id: userId,
           },
         },
+        relations: {
+          user: true,
+        },
       });
 
     for (const notification of notifications) {
       notification.isRead = true;
     }
 
-    return this.notificationsRepository.save(
-      notifications,
+    const savedNotifications =
+      await this.notificationsRepository.save(notifications);
+
+    this.realtimeGateway.emitToUser(
+      userId,
+      'notifications.updated',
+      {
+        readAll: true,
+      },
     );
+
+    return savedNotifications;
   }
 }

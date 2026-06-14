@@ -15,6 +15,7 @@ import { LoanRequestsModule } from './loan-requests/loan-requests.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OperatingHoursModule } from './operating-hours/operating-hours.module';
 import { LostReportsModule } from './lost-reports/lost-reports.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { LostReportsModule } from './lost-reports/lost-reports.module';
     NotificationsModule,
     OperatingHoursModule,
     LostReportsModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

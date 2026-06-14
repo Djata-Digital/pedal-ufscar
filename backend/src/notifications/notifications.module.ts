@@ -7,12 +7,16 @@ import { Notification } from './entities/notification.entity';
 
 import { User } from '../users/entities/user.entity';
 
+import { RealtimeModule } from '../realtime/realtime.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Notification,
       User,
     ]),
+
+    RealtimeModule,
   ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
