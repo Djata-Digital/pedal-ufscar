@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'sonner';
 import { TermsOfUse } from '../../components/TermsOfUse';
+import { socket } from '../../realtime/socket';
 
 import {
   Bell,
@@ -729,6 +730,34 @@ export default function PublicDashboardPage() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    socket.connect();
+
+    socket.emit('register-user', {
+      userId: user.id,
+    });
+
+    socket.on('notification-created', (notification) => {
+      setNotifications((current) => [
+        notification,
+        ...current,
+      ]);
+
+      toast.success(notification.title);
+    });
+
+    socket.on('dashboard-refresh', () => {
+      loadData();
+    });
+
+    return () => {
+      socket.off('notification-created');
+      socket.off('dashboard-refresh');
+    };
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">

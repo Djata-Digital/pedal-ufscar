@@ -8,6 +8,7 @@ import {
 import type { ReactNode } from 'react';
 
 import { api } from '../api/api';
+import { socket } from '../realtime/socket';
 
 interface User {
   id: string;
@@ -40,6 +41,23 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+function connectSocket(user: User) {
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  socket.emit('register-user', {
+    userId: user.id,
+    userType: user.userType,
+  });
+}
+
+function disconnectSocket() {
+  if (socket.connected) {
+    socket.disconnect();
+  }
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
 
@@ -57,8 +75,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await api.get('/auth/me');
 
       setUser(response.data);
+      connectSocket(response.data);
     } catch {
       localStorage.removeItem('@pedal_token');
+      disconnectSocket();
     }
 
     setLoading(false);
@@ -66,6 +86,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     loadUser();
+
+    return () => {
+      disconnectSocket();
+    };
   }, []);
 
   async function login({
@@ -82,6 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.setItem('@pedal_token', accessToken);
 
     setUser(user);
+    connectSocket(user);
 
     return {
       accessToken,
@@ -95,6 +120,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('public_user');
 
     setUser(null);
+    disconnectSocket();
   }
 
   return (
