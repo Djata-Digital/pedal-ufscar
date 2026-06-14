@@ -740,16 +740,15 @@ export default function PublicDashboardPage() {
       userId: user.id,
     });
 
-    socket.on('notification-created', (notification) => {
-      setNotifications((current) => [
-        notification,
-        ...current,
-      ]);
+    socket.on('notifications.updated', (notification) => {
+      loadData();
 
-      toast.success(notification.title);
+      if (notification?.title) {
+        toast.success(notification.title);
+      }
     });
 
-    socket.on('dashboard-refresh', () => {
+    socket.on('dashboard.updated', () => {
       loadData();
     });
 
